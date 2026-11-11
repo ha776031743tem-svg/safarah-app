@@ -23,14 +23,15 @@ class AppConstants {
   static const Color lightGold = Color(0xFFF3E5AB); // ذهبي فاتح للنصوص المميزة
   static const Color scaffoldBackground = Color(0xFF042F1D);
 
+    // تدرج الخلفية الملكي الفاخر لتطبيق سَفَرَة
   static const LinearGradient emeraldBackgroundGradient = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
     colors: [
-      Color(0xFF042F1D),
-      Color(0xFF0B5335),
-      Color(0xFF146C43),
-      Color(0xFF073B24),
+      Color(0xFF0D1B2A), // كحلي ملكي داكن
+      Color(0xFF132238), // أزرق ليلي فاخر
+      Color(0xFF1B314C), // عمق ياقوتي
+      Color(0xFF0A1118), // كحلي إسلامي وقور
     ],
   );
 

@@ -1,11 +1,12 @@
-class UserModel {
+﻿class UserModel {
   final String id;
   final String username;
   final String password;
   final String fullName;
-  final String role; // 'admin', 'managed_teacher', 'independent_teacher'
+  final String role;
   final String halqaName;
   final String? adminId;
+  final String? email;
   final String createdAt;
   final int isSynced;
 
@@ -17,6 +18,7 @@ class UserModel {
     required this.role,
     required this.halqaName,
     this.adminId,
+    this.email,
     required this.createdAt,
     this.isSynced = 0,
   });
@@ -30,6 +32,7 @@ class UserModel {
       'role': role,
       'halqa_name': halqaName,
       'admin_id': adminId,
+      'email': email,
       'created_at': createdAt,
       'is_synced': isSynced,
     };
@@ -44,6 +47,7 @@ class UserModel {
       'role': role,
       'halqa_name': halqaName,
       'admin_id': adminId,
+      'email': email,
       'created_at': createdAt,
     };
   }
@@ -57,6 +61,7 @@ class UserModel {
       role: map['role']?.toString() ?? 'independent_teacher',
       halqaName: map['halqa_name']?.toString() ?? '',
       adminId: map['admin_id']?.toString(),
+      email: map['email']?.toString(),
       createdAt: map['created_at']?.toString() ?? DateTime.now().toIso8601String(),
       isSynced: map['is_synced'] is int ? map['is_synced'] as int : 1,
     );
@@ -70,6 +75,7 @@ class UserModel {
     String? role,
     String? halqaName,
     String? adminId,
+    String? email,
     String? createdAt,
     int? isSynced,
   }) {
@@ -81,6 +87,7 @@ class UserModel {
       role: role ?? this.role,
       halqaName: halqaName ?? this.halqaName,
       adminId: adminId ?? this.adminId,
+      email: email ?? this.email,
       createdAt: createdAt ?? this.createdAt,
       isSynced: isSynced ?? this.isSynced,
     );

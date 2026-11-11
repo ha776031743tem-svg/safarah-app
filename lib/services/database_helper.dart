@@ -25,7 +25,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -44,6 +44,11 @@ class DatabaseHelper {
             BEGIN SELECT RAISE(ABORT, 'Invalid attendance status'); END
           """);
         }
+      if (oldVersion < 3) {
+        try {
+          await db.execute('ALTER TABLE users ADD COLUMN email TEXT;');
+        } catch (_) {}
+      }
       },
     );
   }
