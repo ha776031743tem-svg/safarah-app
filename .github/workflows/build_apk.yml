@@ -27,9 +27,16 @@ jobs:
         run: |
           mkdir -p assets/fonts
 
-          if [ ! -d "android" ]; then
+                    if [ ! -d "android" ]; then
             echo "Creating android directory..."
             flutter create . --platforms=android
+          fi
+          sed -i 's/android:label="[^"]*"/android:label="سَفَرَة"/g' android/app/src/main/AndroidManifest.xml
+          # إضافة صلاحيات الإنترنت ومنع حظر الاتصالات الشبكية
+          if ! grep -q "android.permission.INTERNET" android/app/src/main/AndroidManifest.xml; then
+            sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n    <application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
+          else
+            sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
           fi
           sed -i 's/android:label="[^"]*"/android:label="سَفَرَة"/g' android/app/src/main/AndroidManifest.xml
 
