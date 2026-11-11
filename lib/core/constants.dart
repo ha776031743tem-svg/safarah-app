@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class AppConstants {
   // ==========================================================================
   // إعدادات Supabase السحابية
   // ==========================================================================
   static const String supabaseUrl = 'https://cqcizgdngoennqizjdoq.supabase.co';
-  static const String supabaseAnonKey = 'sb_publishable_iata6oBETxpcLy4ja7Ya1g_6t3Q0L7v';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxY2l6Z2RuZ29lbm5xaXpqZG9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNTI3MjYsImV4cCI6MjEwOTcyODcyNn0.HA0g6DAWYcyDNffOrAtE_cIHOcqr6Ly4nQILnFvNUbA';
 
   static bool get isSupabaseConfigured =>
       supabaseUrl.startsWith('https://') &&
