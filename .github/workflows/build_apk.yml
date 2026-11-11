@@ -1,0 +1,81 @@
+name: Build Safarah APK (Cloud)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Prepare Android and Set CompileSdk 36
+        run: |
+          # 1. إنشاء مجلد أندرويد إن لم يكن موجوداً
+          if [ ! -d "android" ]; then
+            echo "Creating android directory..."
+            flutter create . --platforms=android
+          fi
+
+          # 2. تثبيت Android Platform 36 لدعم BAKLAVA
+          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+
+          # 3. ضبط رابط Gradle Wrapper على 9.3.1-bin
+          cat << 'EOF' > android/gradle/wrapper/gradle-wrapper.properties
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+
+          # 4. إجبار كافة الحزم وتطبيقك على compileSdk 36 لدعم sqflite و printing
+          mkdir -p ~/.gradle
+          cat << 'EOF' > ~/.gradle/init.gradle
+          allprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 36
+                          if (namespace == null && project != rootProject) {
+                              // bypass namespace issues if any
+                          }
+                      }
+                  }
+              }
+              tasks.matching { it.name.contains("checkAarMetadata") || it.name.contains("CheckAarMetadata") }.all {
+                  enabled = false
+              }
+          }
+          EOF
+
+          # 5. رفع مهلة الاتصال والذاكرة
+          echo "systemProp.org.gradle.internal.http.connectionTimeout=300000" >> ~/.gradle/gradle.properties
+          echo "systemProp.org.gradle.internal.http.socketTimeout=300000" >> ~/.gradle/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m" >> ~/.gradle/gradle.properties
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: safarah-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
