@@ -25,9 +25,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 4) {
+          try {
+            await db.execute('ALTER TABLE users ADD COLUMN email TEXT;');
+          } catch (_) {}
+        }
         if (oldVersion < 2) {
           await db.execute("UPDATE daily_logs SET status = 'present' WHERE status = 'recited'");
           await db.execute("UPDATE daily_logs SET status = 'attended_no_recite' WHERE status = 'attended_no_recitation'");
@@ -50,15 +55,23 @@ class DatabaseHelper {
         } catch (_) {}
       }
       },
+      onOpen: (db) async {
+        try {
+          await db.execute('ALTER TABLE users ADD COLUMN email TEXT;');
+        } catch (_) {}
+      },
     );
   }
 
   Future<void> _createDB(Database db, int version) async {
-    await db.execute('''\nCREATE TABLE users (\nid TEXT PRIMARY KEY,\nusername TEXT UNIQUE NOT NULL,\npassword TEXT NOT NULL,\nfull_name TEXT NOT NULL,\nrole TEXT NOT NULL,\nhalqa_name TEXT DEFAULT '',\nadmin_id TEXT,\ncreated_at TEXT NOT NULL,\nis_synced INTEGER DEFAULT 0\n)\n''');
+    await db.execute('''\nCREATE TABLE users (\nid TEXT PRIMARY KEY,\nusername TEXT UNIQUE NOT NULL,\npassword TEXT NOT NULL,\nfull_name TEXT NOT NULL,\nrole TEXT NOT NULL,\nhalqa_name TEXT DEFAULT '',\nadmin_id TEXT,
+  email TEXT,\ncreated_at TEXT NOT NULL,\nis_synced INTEGER DEFAULT 0\n)\n''');
 
-    await db.execute('''\nCREATE TABLE students (\nid TEXT PRIMARY KEY,\nname TEXT NOT NULL,\nteacher_id TEXT NOT NULL,\nadmin_id TEXT,\nhalqa_name TEXT DEFAULT '',\nparent_phone TEXT DEFAULT '',\nlast_surah_number INTEGER DEFAULT 1,\nlast_surah_name TEXT DEFAULT 'الفاتحة',\nlast_ayah INTEGER DEFAULT 1,\nlast_page INTEGER DEFAULT 1,\ncreated_at TEXT NOT NULL,\nis_synced INTEGER DEFAULT 0\n)\n''');
+    await db.execute('''\nCREATE TABLE students (\nid TEXT PRIMARY KEY,\nname TEXT NOT NULL,\nteacher_id TEXT NOT NULL,\nadmin_id TEXT,
+  email TEXT,\nhalqa_name TEXT DEFAULT '',\nparent_phone TEXT DEFAULT '',\nlast_surah_number INTEGER DEFAULT 1,\nlast_surah_name TEXT DEFAULT 'الفاتحة',\nlast_ayah INTEGER DEFAULT 1,\nlast_page INTEGER DEFAULT 1,\ncreated_at TEXT NOT NULL,\nis_synced INTEGER DEFAULT 0\n)\n''');
 
-    await db.execute('''\nCREATE TABLE daily_logs (\nid TEXT PRIMARY KEY,\nstudent_id TEXT NOT NULL,\nteacher_id TEXT NOT NULL,\nadmin_id TEXT,\nlog_date TEXT NOT NULL,\nstatus TEXT NOT NULL CHECK(status IN ('present', 'absent', 'attended_no_recite', 'excused')),\nmem_surah_number INTEGER,\nmem_surah_name TEXT,\nmem_from_ayah INTEGER,\nmem_to_ayah INTEGER,\nmem_from_page INTEGER,\nmem_to_page INTEGER,\nrev_surah_number INTEGER,\nrev_surah_name TEXT,\nrev_from_ayah INTEGER,\nrev_to_ayah INTEGER,\nrev_from_page INTEGER,\nrev_to_page INTEGER,\nnotes TEXT DEFAULT '',\ncreated_at TEXT NOT NULL,\nis_synced INTEGER DEFAULT 0\n)\n''');
+    await db.execute('''\nCREATE TABLE daily_logs (\nid TEXT PRIMARY KEY,\nstudent_id TEXT NOT NULL,\nteacher_id TEXT NOT NULL,\nadmin_id TEXT,
+  email TEXT,\nlog_date TEXT NOT NULL,\nstatus TEXT NOT NULL CHECK(status IN ('present', 'absent', 'attended_no_recite', 'excused')),\nmem_surah_number INTEGER,\nmem_surah_name TEXT,\nmem_from_ayah INTEGER,\nmem_to_ayah INTEGER,\nmem_from_page INTEGER,\nmem_to_page INTEGER,\nrev_surah_number INTEGER,\nrev_surah_name TEXT,\nrev_from_ayah INTEGER,\nrev_to_ayah INTEGER,\nrev_from_page INTEGER,\nrev_to_page INTEGER,\nnotes TEXT DEFAULT '',\ncreated_at TEXT NOT NULL,\nis_synced INTEGER DEFAULT 0\n)\n''');
   }
 
   // ==========================================================================
