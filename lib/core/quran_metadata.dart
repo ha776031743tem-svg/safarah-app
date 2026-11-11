@@ -1,4 +1,4 @@
-class SurahInfo {
+﻿class SurahInfo {
   final int number;
   final String name;
   final int ayahCount;
@@ -132,6 +132,35 @@ class QuranMetadata {
     SurahInfo(number: 114, name: 'الناس', ayahCount: 6, startPage: 604, endPage: 604),
   ];
 
+    static const Map<int, List<int>> _surahPageEndAyahs = {
+    36: [12, 27, 40, 54, 70, 83],
+    40: [7, 16, 25, 33, 40, 49, 58, 66, 77, 85],
+  };
+
+  static int getPageForAyah(int surahNumber, int ayahNumber) {
+    final surah = getByNumber(surahNumber);
+    if (surah.startPage == surah.endPage) return surah.startPage;
+    final safeAyah = ayahNumber.clamp(1, surah.ayahCount);
+    final pageEnds = _surahPageEndAyahs[surahNumber];
+    if (pageEnds != null) {
+      for (int i = 0; i < pageEnds.length; i++) {
+        if (safeAyah <= pageEnds[i]) return (surah.startPage + i).clamp(surah.startPage, surah.endPage);
+      }
+      return surah.endPage;
+    }
+    final totalPages = surah.endPage - surah.startPage + 1;
+    final ratio = (safeAyah - 1) / (surah.ayahCount > 1 ? surah.ayahCount - 1 : 1);
+    return (surah.startPage + (ratio * (totalPages - 1)).round()).clamp(surah.startPage, surah.endPage);
+  }
+
+  static Map<String, int> getPageRangeForAyahs({required int surahNumber, required int fromAyah, required int toAyah}) {
+    final surah = getByNumber(surahNumber);
+    final sA = fromAyah.clamp(1, surah.ayahCount);
+    final eA = toAyah.clamp(sA, surah.ayahCount);
+    final fP = getPageForAyah(surahNumber, sA);
+    final tP = getPageForAyah(surahNumber, eA);
+    return {'fromPage': fP, 'toPage': tP >= fP ? tP : fP};
+  }
   static SurahInfo getByNumber(int number) {
     return surahs.firstWhere(
       (s) => s.number == number,
