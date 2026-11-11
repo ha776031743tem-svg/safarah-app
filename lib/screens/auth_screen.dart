@@ -199,16 +199,26 @@ class _AuthScreenState extends State<AuthScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppConstants.goldAccent.withOpacity(0.15),
                           border: Border.all(color: AppConstants.goldAccent, width: 1.5),
                         ),
-                        child: Icon(
-                          _isLogin ? Icons.lock_open_rounded : Icons.person_add_alt_1_rounded,
-                          size: 42,
-                          color: AppConstants.goldAccent,
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 68,
+                            height: 68,
+                            child: Image.asset(
+                              'assets/images/app_logo.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                _isLogin ? Icons.lock_open_rounded : Icons.person_add_alt_1_rounded,
+                                size: 42,
+                                color: AppConstants.goldAccent,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
