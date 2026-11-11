@@ -16,6 +16,7 @@ class SyncService {
   bool _isSyncing = false;
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<int> pendingCountNotifier = ValueNotifier<int>(0);
+  String? lastSyncError;
 
   Future<void> initialize() async {
     await refreshPendingCount();
@@ -31,10 +32,9 @@ class SyncService {
       }
     });
 
-    final currentConnectivity = await Connectivity().checkConnectivity();
-    if (currentConnectivity.any((r) => r != ConnectivityResult.none)) {
-      await syncAllPendingData();
-    }
+    Future.delayed(const Duration(seconds: 2), () {
+      syncAllPendingData();
+    });
   }
 
   Future<void> refreshPendingCount() async {
@@ -42,9 +42,29 @@ class SyncService {
     pendingCountNotifier.value = count;
   }
 
+  /// رفع فوري ومباشر لحساب مستخدم (مدير أو معلم) إلى Supabase دون انتظار الطابور
+  Future<bool> pushUserImmediately(UserModel user) async {
+    if (!AppConstants.isSupabaseConfigured) return false;
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.from('users').upsert(user.toSupabaseMap());
+      await DatabaseHelper.instance.markRecordSynced('users', user.id);
+      await refreshPendingCount();
+      lastSyncError = null;
+      return true;
+    } catch (e) {
+      lastSyncError = e.toString();
+      debugPrint('Immediate user push error: $e');
+      return false;
+    }
+  }
+
   Future<bool> syncAllPendingData() async {
-    if (_isSyncing || !AppConstants.isSupabaseConfigured) return false;
-    await refreshPendingCount();
+    if (!AppConstants.isSupabaseConfigured) return false;
+    // إذا كانت هناك مزامنة جارية ننتظرها ثانية واحدة بدلاً من إلغاء الطلب!
+    if (_isSyncing) {
+      await Future.delayed(const Duration(seconds: 1));
+    }
 
     _isSyncing = true;
     isSyncingNotifier.value = true;
@@ -54,7 +74,7 @@ class SyncService {
       final supabase = Supabase.instance.client;
       final db = DatabaseHelper.instance;
 
-      // 1. رفع المستخدمين (كل مستخدم بشكل مستقل لضمان عدم ضياع أي حساب)
+      // 1. رفع جميع المستخدمين غير المتزامنين
       final unsyncedUsers = await db.getUnsyncedUsers();
       for (final user in unsyncedUsers) {
         try {
@@ -62,11 +82,12 @@ class SyncService {
           await db.markRecordSynced('users', user.id);
         } catch (e) {
           allSuccess = false;
+          lastSyncError = e.toString();
           debugPrint('User sync error: $e');
         }
       }
 
-      // 2. رفع الطلاب
+      // 2. رفع جميع الطلاب غير المتزامنين
       final unsyncedStudents = await db.getUnsyncedStudents();
       for (final student in unsyncedStudents) {
         try {
@@ -74,18 +95,18 @@ class SyncService {
           await db.markRecordSynced('students', student.id);
         } catch (e) {
           allSuccess = false;
+          lastSyncError = e.toString();
           debugPrint('Student sync error: $e');
         }
       }
 
-      // 3. رفع سجلات التسميع (مع توافق تلقائي لو كانت قاعدة Supabase لم تحدث القيد بعد)
+      // 3. رفع جميع السجلات اليومية
       final unsyncedLogs = await db.getUnsyncedLogs();
       for (final log in unsyncedLogs) {
         try {
           await supabase.from('daily_logs').upsert(log.toSupabaseMap());
           await db.markRecordSynced('daily_logs', log.id);
         } catch (e) {
-          // محاولة ثانية بمسميات التوافق القديمة إذا كان جدول Supabase يرفض الحالة الجديدة
           try {
             final fallbackMap = Map<String, dynamic>.from(log.toSupabaseMap());
             if (fallbackMap['status'] == 'present') fallbackMap['status'] = 'recited';
@@ -95,6 +116,7 @@ class SyncService {
             await db.markRecordSynced('daily_logs', log.id);
           } catch (e2) {
             allSuccess = false;
+            lastSyncError = e2.toString();
             debugPrint('Log sync error: $e2');
           }
         }
@@ -146,26 +168,26 @@ class SyncService {
   Future<UserModel?> authenticateFromCloud(String username, String password, String role) async {
     if (!AppConstants.isSupabaseConfigured) return null;
     try {
-      await syncAllPendingData();
       final supabase = Supabase.instance.client;
-      // بحث غير حساس لحالة الأحرف (Hatem == hatem)
-      final rows = await supabase
-          .from('users')
-          .select()
-          .ilike('username', username.trim())
-          .eq('password', password.trim());
+      final cleanUser = username.trim().toLowerCase();
+      final cleanPass = password.trim();
 
-      if (rows.isNotEmpty) {
-        final match = rows.firstWhere(
-          (r) => r['role'] == role,
-          orElse: () => rows.first,
-        );
-        final user = UserModel.fromMap(match).copyWith(isSynced: 1);
-        await DatabaseHelper.instance.upsertUser(user);
-        await pullUserDataFromCloud(user);
-        return user;
+      // جلب المستخدمين ومطابقة الاسم وكلمة المرور بمرونة تامة
+      final allUsers = await supabase.from('users').select();
+      for (final row in allUsers) {
+        final dbUser = (row['username']?.toString() ?? '').trim().toLowerCase();
+        final dbPass = (row['password']?.toString() ?? '').trim();
+        final dbRole = (row['role']?.toString() ?? '').trim();
+
+        if (dbUser == cleanUser && dbPass == cleanPass && dbRole == role) {
+          final user = UserModel.fromMap(row).copyWith(isSynced: 1);
+          await DatabaseHelper.instance.upsertUser(user);
+          await pullUserDataFromCloud(user);
+          return user;
+        }
       }
     } catch (e) {
+      lastSyncError = e.toString();
       debugPrint('Cloud auth error: $e');
     }
     return null;

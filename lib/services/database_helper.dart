@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -76,7 +76,7 @@ class DatabaseHelper {
     final db = await instance.database;
     final maps = await db.query(
       'users',
-      where: 'username = ? AND password = ? AND role = ?',
+      where: 'LOWER(username) = LOWER(?) AND password = ? AND role = ?',
       whereArgs: [username.trim(), password.trim(), role],
     );
     if (maps.isNotEmpty) {

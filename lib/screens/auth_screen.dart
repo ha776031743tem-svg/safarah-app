@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
 import '../models/user_model.dart';
@@ -95,6 +95,7 @@ class _AuthScreenState extends State<AuthScreen> {
         );
 
         await db.upsertUser(newUser);
+        await SyncService.instance.pushUserImmediately(newUser);
         await SyncService.instance.syncAllPendingData();
         user = newUser;
       }
