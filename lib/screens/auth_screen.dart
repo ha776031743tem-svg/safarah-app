@@ -182,21 +182,14 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(roleTitle)),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: AppConstants.emeraldBackgroundGradient,
-        ),
-        child: Center(
+      body: AppConstants.buildAppBackground(child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: const BorderSide(color: AppConstants.goldAccent, width: 1.2),
-              ),
+                side: const BorderSide(color: AppConstants.goldAccent, width: 1.2)),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Form(

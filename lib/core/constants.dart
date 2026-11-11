@@ -1,6 +1,30 @@
 ﻿import 'package:flutter/material.dart';
 
 class AppConstants {
+  // ودجت الخلفية الرسمية للتطبيق (الصورة مع طبقة حماية لونية ملكية)
+  static Widget buildAppBackground({required Widget child}) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/app_background.jpg',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              decoration: const BoxDecoration(
+                gradient: emeraldBackgroundGradient,
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: Container(
+            color: const Color(0xFF0A1118).withOpacity(0.82), // تعتيم كحلي لضمان وضوح كامل للبيانات
+          ),
+        ),
+        SafeArea(child: child),
+      ],
+    );
+  }
   // ==========================================================================
   // إعدادات Supabase السحابية
   // ==========================================================================
