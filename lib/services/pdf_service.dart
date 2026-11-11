@@ -1,3 +1,4 @@
+﻿import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
@@ -23,8 +24,8 @@ class PdfService {
     pw.Font arabicRegular;
     pw.Font arabicBold;
     try {
-      arabicRegular = await PdfGoogleFonts.cairoRegular();
-      arabicBold = await PdfGoogleFonts.cairoBold();
+      arabicRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'));
+      arabicBold = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Bold.ttf'));
     } catch (_) {
       arabicRegular = pw.Font.helvetica();
       arabicBold = pw.Font.helveticaBold();
@@ -117,8 +118,8 @@ class PdfService {
     pw.Font regular;
     pw.Font bold;
     try {
-      regular = await PdfGoogleFonts.cairoRegular();
-      bold = await PdfGoogleFonts.cairoBold();
+      regular = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'));
+      bold = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Bold.ttf'));
     } catch (_) {
       regular = pw.Font.helvetica();
       bold = pw.Font.helveticaBold();
