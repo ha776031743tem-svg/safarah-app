@@ -16,6 +16,7 @@ class SyncService {
   bool _isSyncing = false;
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<int> pendingCountNotifier = ValueNotifier<int>(0);
+  String? lastSyncError;
 
   Future<void> initialize() async {
     await refreshPendingCount();
@@ -31,7 +32,7 @@ class SyncService {
       }
     });
 
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 2), () {
       syncAllPendingData();
     });
   }
@@ -41,12 +42,29 @@ class SyncService {
     pendingCountNotifier.value = count;
   }
 
-  Future<bool> syncAllPendingData() async {
-    if (_isSyncing) return false;
+  /// رفع فوري لمستخدم (مدير أو معلم) إلى Supabase
+  Future<bool> pushUserImmediately(UserModel user) async {
     if (!AppConstants.isSupabaseConfigured) return false;
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.from('users').upsert(user.toSupabaseMap());
+      await DatabaseHelper.instance.markRecordSynced('users', user.id);
+      await refreshPendingCount();
+      lastSyncError = null;
+      return true;
+    } catch (e) {
+      lastSyncError = e.toString();
+      debugPrint('Immediate user push error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> syncAllPendingData() async {
+    if (_isSyncing || !AppConstants.isSupabaseConfigured) return false;
 
     _isSyncing = true;
     isSyncingNotifier.value = true;
+    bool allSuccess = true;
 
     try {
       final supabase = Supabase.instance.client;
@@ -59,7 +77,9 @@ class SyncService {
           await supabase.from('users').upsert(user.toSupabaseMap());
           await db.markRecordSynced('users', user.id);
         } catch (e) {
-          debugPrint('User sync silent error: $e');
+          allSuccess = false;
+          lastSyncError = e.toString();
+          debugPrint('User sync error: $e');
         }
       }
 
@@ -70,7 +90,9 @@ class SyncService {
           await supabase.from('students').upsert(student.toSupabaseMap());
           await db.markRecordSynced('students', student.id);
         } catch (e) {
-          debugPrint('Student sync silent error: $e');
+          allSuccess = false;
+          lastSyncError = e.toString();
+          debugPrint('Student sync error: $e');
         }
       }
 
@@ -89,16 +111,15 @@ class SyncService {
             await supabase.from('daily_logs').upsert(fallbackMap);
             await db.markRecordSynced('daily_logs', log.id);
           } catch (e2) {
-            debugPrint('Log sync silent error: $e2');
+            allSuccess = false;
+            lastSyncError = e2.toString();
+            debugPrint('Log sync error: $e2');
           }
         }
       }
 
       await refreshPendingCount();
-      return true;
-    } catch (e) {
-      debugPrint('Sync outer error: $e');
-      return false;
+      return allSuccess;
     } finally {
       _isSyncing = false;
       isSyncingNotifier.value = false;
@@ -161,6 +182,7 @@ class SyncService {
         }
       }
     } catch (e) {
+      lastSyncError = e.toString();
       debugPrint('Cloud auth error: $e');
     }
     return null;
