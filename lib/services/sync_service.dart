@@ -16,7 +16,6 @@ class SyncService {
   bool _isSyncing = false;
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<int> pendingCountNotifier = ValueNotifier<int>(0);
-  String? lastSyncError;
 
   Future<void> initialize() async {
     await refreshPendingCount();
@@ -32,7 +31,7 @@ class SyncService {
       }
     });
 
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 1), () {
       syncAllPendingData();
     });
   }
@@ -42,65 +41,40 @@ class SyncService {
     pendingCountNotifier.value = count;
   }
 
-  /// رفع فوري ومباشر لحساب مستخدم (مدير أو معلم) إلى Supabase دون انتظار الطابور
-  Future<bool> pushUserImmediately(UserModel user) async {
-    if (!AppConstants.isSupabaseConfigured) return false;
-    try {
-      final supabase = Supabase.instance.client;
-      await supabase.from('users').upsert(user.toSupabaseMap());
-      await DatabaseHelper.instance.markRecordSynced('users', user.id);
-      await refreshPendingCount();
-      lastSyncError = null;
-      return true;
-    } catch (e) {
-      lastSyncError = e.toString();
-      debugPrint('Immediate user push error: $e');
-      return false;
-    }
-  }
-
   Future<bool> syncAllPendingData() async {
+    if (_isSyncing) return false;
     if (!AppConstants.isSupabaseConfigured) return false;
-    // إذا كانت هناك مزامنة جارية ننتظرها ثانية واحدة بدلاً من إلغاء الطلب!
-    if (_isSyncing) {
-      await Future.delayed(const Duration(seconds: 1));
-    }
 
     _isSyncing = true;
     isSyncingNotifier.value = true;
-    bool allSuccess = true;
 
     try {
       final supabase = Supabase.instance.client;
       final db = DatabaseHelper.instance;
 
-      // 1. رفع جميع المستخدمين غير المتزامنين
+      // 1. رفع المستخدمين
       final unsyncedUsers = await db.getUnsyncedUsers();
       for (final user in unsyncedUsers) {
         try {
           await supabase.from('users').upsert(user.toSupabaseMap());
           await db.markRecordSynced('users', user.id);
         } catch (e) {
-          allSuccess = false;
-          lastSyncError = e.toString();
-          debugPrint('User sync error: $e');
+          debugPrint('User sync silent error: $e');
         }
       }
 
-      // 2. رفع جميع الطلاب غير المتزامنين
+      // 2. رفع الطلاب
       final unsyncedStudents = await db.getUnsyncedStudents();
       for (final student in unsyncedStudents) {
         try {
           await supabase.from('students').upsert(student.toSupabaseMap());
           await db.markRecordSynced('students', student.id);
         } catch (e) {
-          allSuccess = false;
-          lastSyncError = e.toString();
-          debugPrint('Student sync error: $e');
+          debugPrint('Student sync silent error: $e');
         }
       }
 
-      // 3. رفع جميع السجلات اليومية
+      // 3. رفع السجلات اليومية
       final unsyncedLogs = await db.getUnsyncedLogs();
       for (final log in unsyncedLogs) {
         try {
@@ -115,15 +89,16 @@ class SyncService {
             await supabase.from('daily_logs').upsert(fallbackMap);
             await db.markRecordSynced('daily_logs', log.id);
           } catch (e2) {
-            allSuccess = false;
-            lastSyncError = e2.toString();
-            debugPrint('Log sync error: $e2');
+            debugPrint('Log sync silent error: $e2');
           }
         }
       }
 
       await refreshPendingCount();
-      return allSuccess;
+      return true;
+    } catch (e) {
+      debugPrint('Sync outer error: $e');
+      return false;
     } finally {
       _isSyncing = false;
       isSyncingNotifier.value = false;
@@ -172,7 +147,6 @@ class SyncService {
       final cleanUser = username.trim().toLowerCase();
       final cleanPass = password.trim();
 
-      // جلب المستخدمين ومطابقة الاسم وكلمة المرور بمرونة تامة
       final allUsers = await supabase.from('users').select();
       for (final row in allUsers) {
         final dbUser = (row['username']?.toString() ?? '').trim().toLowerCase();
@@ -187,7 +161,6 @@ class SyncService {
         }
       }
     } catch (e) {
-      lastSyncError = e.toString();
       debugPrint('Cloud auth error: $e');
     }
     return null;
