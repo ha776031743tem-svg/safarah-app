@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,25 +19,18 @@ class SyncService {
 
   Future<void> initialize() async {
     await refreshPendingCount();
-
-    // عمل نسخة احتياطية محلية يومية تلقائية بصيغة JSON عند تشغيل التطبيق
     try {
       await DatabaseHelper.instance.exportDailyJsonBackup();
-    } catch (e) {
-      debugPrint('Daily local JSON backup notice: $e');
-    }
+    } catch (_) {}
 
-    // الاستماع لتغير حالة الاتصال بالإنترنت للمزامنة الفورية
     _connectivitySubscription = Connectivity()
         .onConnectivityChanged
         .listen((List<ConnectivityResult> results) async {
-      final hasConnection = results.any((r) => r != ConnectivityResult.none);
-      if (hasConnection) {
+      if (results.any((r) => r != ConnectivityResult.none)) {
         await syncAllPendingData();
       }
     });
 
-    // محاولة مزامنة أولية عند فتح التطبيق
     final currentConnectivity = await Connectivity().checkConnectivity();
     if (currentConnectivity.any((r) => r != ConnectivityResult.none)) {
       await syncAllPendingData();
@@ -49,146 +42,125 @@ class SyncService {
     pendingCountNotifier.value = count;
   }
 
-  /// رفع كافة السجلات المحلية غير المتزامنة (is_synced = 0) إلى Supabase
   Future<bool> syncAllPendingData() async {
-    if (_isSyncing) return false;
+    if (_isSyncing || !AppConstants.isSupabaseConfigured) return false;
     await refreshPendingCount();
-
-    if (!AppConstants.isSupabaseConfigured) {
-      return false;
-    }
 
     _isSyncing = true;
     isSyncingNotifier.value = true;
+    bool allSuccess = true;
 
     try {
       final supabase = Supabase.instance.client;
       final db = DatabaseHelper.instance;
 
-      // 1. رفع المستخدمين غير المتزامنين
+      // 1. رفع المستخدمين (كل مستخدم بشكل مستقل لضمان عدم ضياع أي حساب)
       final unsyncedUsers = await db.getUnsyncedUsers();
       for (final user in unsyncedUsers) {
-        await supabase.from('users').upsert(user.toSupabaseMap());
-        await db.markRecordSynced('users', user.id);
+        try {
+          await supabase.from('users').upsert(user.toSupabaseMap());
+          await db.markRecordSynced('users', user.id);
+        } catch (e) {
+          allSuccess = false;
+          debugPrint('User sync error: $e');
+        }
       }
 
-      // 2. رفع الطلاب غير المتزامنين
+      // 2. رفع الطلاب
       final unsyncedStudents = await db.getUnsyncedStudents();
       for (final student in unsyncedStudents) {
-        await supabase.from('students').upsert(student.toSupabaseMap());
-        await db.markRecordSynced('students', student.id);
+        try {
+          await supabase.from('students').upsert(student.toSupabaseMap());
+          await db.markRecordSynced('students', student.id);
+        } catch (e) {
+          allSuccess = false;
+          debugPrint('Student sync error: $e');
+        }
       }
 
-      // 3. رفع سجلات التسميع اليومي غير المتزامنة
+      // 3. رفع سجلات التسميع (مع توافق تلقائي لو كانت قاعدة Supabase لم تحدث القيد بعد)
       final unsyncedLogs = await db.getUnsyncedLogs();
       for (final log in unsyncedLogs) {
-        await supabase.from('daily_logs').upsert(log.toSupabaseMap());
-        await db.markRecordSynced('daily_logs', log.id);
+        try {
+          await supabase.from('daily_logs').upsert(log.toSupabaseMap());
+          await db.markRecordSynced('daily_logs', log.id);
+        } catch (e) {
+          // محاولة ثانية بمسميات التوافق القديمة إذا كان جدول Supabase يرفض الحالة الجديدة
+          try {
+            final fallbackMap = Map<String, dynamic>.from(log.toSupabaseMap());
+            if (fallbackMap['status'] == 'present') fallbackMap['status'] = 'recited';
+            if (fallbackMap['status'] == 'attended_no_recite') fallbackMap['status'] = 'attended_no_recitation';
+            if (fallbackMap['status'] == 'excused') fallbackMap['status'] = 'absent';
+            await supabase.from('daily_logs').upsert(fallbackMap);
+            await db.markRecordSynced('daily_logs', log.id);
+          } catch (e2) {
+            allSuccess = false;
+            debugPrint('Log sync error: $e2');
+          }
+        }
       }
 
-      // حفظ نسخة JSON محلية محدثة بعد نجاح المزامنة
-      try {
-        await db.exportDailyJsonBackup();
-      } catch (_) {}
-
       await refreshPendingCount();
-      return true;
-    } catch (e) {
-      debugPrint('Sync error: $e');
-      return false;
+      return allSuccess;
     } finally {
       _isSyncing = false;
       isSyncingNotifier.value = false;
     }
   }
 
-  /// استعادة وسحب كافة بيانات المستخدم (معلم أو مدير) من Supabase إلى SQLite المحلي
-  /// مفيد عند تسجيل الدخول من هاتف جديد أو دخول معلم بديل
   Future<void> pullUserDataFromCloud(UserModel user) async {
     if (!AppConstants.isSupabaseConfigured) return;
-
     try {
       final supabase = Supabase.instance.client;
       final db = DatabaseHelper.instance;
 
       if (user.role == AppConstants.roleAdmin) {
-        // سحب جميع المعلمين التابعين لهذا المدير
-        final teachersData = await supabase
-            .from('users')
-            .select()
-            .eq('admin_id', user.id);
+        final teachersData = await supabase.from('users').select().eq('admin_id', user.id);
         for (final row in teachersData) {
-          final teacher = UserModel.fromMap(row).copyWith(isSynced: 1);
-          await db.upsertUser(teacher);
+          await db.upsertUser(UserModel.fromMap(row).copyWith(isSynced: 1));
         }
-
-        // سحب جميع طلاب المركز
-        final studentsData = await supabase
-            .from('students')
-            .select()
-            .eq('admin_id', user.id);
+        final studentsData = await supabase.from('students').select().eq('admin_id', user.id);
         for (final row in studentsData) {
-          final student = StudentModel.fromMap(row).copyWith(isSynced: 1);
-          await db.upsertStudent(student);
+          await db.upsertStudent(StudentModel.fromMap(row).copyWith(isSynced: 1));
         }
-
-        // سحب جميع السجلات اليومية للمركز
-        final logsData = await supabase
-            .from('daily_logs')
-            .select()
-            .eq('admin_id', user.id);
+        final logsData = await supabase.from('daily_logs').select().eq('admin_id', user.id);
         for (final row in logsData) {
-          final log = DailyLogModel.fromMap(row).copyWithSynced(1);
-          await db.upsertDailyLog(log);
+          await db.upsertDailyLog(DailyLogModel.fromMap(row).copyWithSynced(1));
         }
       } else {
-        // سحب طلاب المعلم (سواء كان معلماً تابعاً أو مستقلاً)
-        final studentsData = await supabase
-            .from('students')
-            .select()
-            .eq('teacher_id', user.id);
+        final studentsData = await supabase.from('students').select().eq('teacher_id', user.id);
         for (final row in studentsData) {
-          final student = StudentModel.fromMap(row).copyWith(isSynced: 1);
-          await db.upsertStudent(student);
+          await db.upsertStudent(StudentModel.fromMap(row).copyWith(isSynced: 1));
         }
-
-        // سحب سجلات التسميع الخاصة بطلاب هذا المعلم
-        final logsData = await supabase
-            .from('daily_logs')
-            .select()
-            .eq('teacher_id', user.id);
+        final logsData = await supabase.from('daily_logs').select().eq('teacher_id', user.id);
         for (final row in logsData) {
-          final log = DailyLogModel.fromMap(row).copyWithSynced(1);
-          await db.upsertDailyLog(log);
+          await db.upsertDailyLog(DailyLogModel.fromMap(row).copyWithSynced(1));
         }
       }
-
       await refreshPendingCount();
     } catch (e) {
       debugPrint('Cloud pull error: $e');
     }
   }
 
-  /// التحقق من بيانات تسجيل الدخول سحابياً إذا لم يكن الحساب موجوداً على الجهاز المحلي
-  Future<UserModel?> authenticateFromCloud(
-    String username,
-    String password,
-    String role,
-  ) async {
+  Future<UserModel?> authenticateFromCloud(String username, String password, String role) async {
     if (!AppConstants.isSupabaseConfigured) return null;
-
     try {
+      await syncAllPendingData();
       final supabase = Supabase.instance.client;
-      final response = await supabase
+      // بحث غير حساس لحالة الأحرف (Hatem == hatem)
+      final rows = await supabase
           .from('users')
           .select()
-          .eq('username', username.trim())
-          .eq('password', password.trim())
-          .eq('role', role)
-          .maybeSingle();
+          .ilike('username', username.trim())
+          .eq('password', password.trim());
 
-      if (response != null) {
-        final user = UserModel.fromMap(response).copyWith(isSynced: 1);
+      if (rows.isNotEmpty) {
+        final match = rows.firstWhere(
+          (r) => r['role'] == role,
+          orElse: () => rows.first,
+        );
+        final user = UserModel.fromMap(match).copyWith(isSynced: 1);
         await DatabaseHelper.instance.upsertUser(user);
         await pullUserDataFromCloud(user);
         return user;
@@ -207,27 +179,13 @@ class SyncService {
 extension DailyLogSyncExt on DailyLogModel {
   DailyLogModel copyWithSynced(int syncedValue) {
     return DailyLogModel(
-      id: id,
-      studentId: studentId,
-      teacherId: teacherId,
-      adminId: adminId,
-      logDate: logDate,
-      status: status,
-      memSurahNumber: memSurahNumber,
-      memSurahName: memSurahName,
-      memFromAyah: memFromAyah,
-      memToAyah: memToAyah,
-      memFromPage: memFromPage,
-      memToPage: memToPage,
-      revSurahNumber: revSurahNumber,
-      revSurahName: revSurahName,
-      revFromAyah: revFromAyah,
-      revToAyah: revToAyah,
-      revFromPage: revFromPage,
-      revToPage: revToPage,
-      notes: notes,
-      createdAt: createdAt,
-      isSynced: syncedValue,
+      id: id, studentId: studentId, teacherId: teacherId, adminId: adminId,
+      logDate: logDate, status: status, memSurahNumber: memSurahNumber,
+      memSurahName: memSurahName, memFromAyah: memFromAyah, memToAyah: memToAyah,
+      memFromPage: memFromPage, memToPage: memToPage, revSurahNumber: revSurahNumber,
+      revSurahName: revSurahName, revFromAyah: revFromAyah, revToAyah: revToAyah,
+      revFromPage: revFromPage, revToPage: revToPage, notes: notes,
+      createdAt: createdAt, isSynced: syncedValue,
     );
   }
 }

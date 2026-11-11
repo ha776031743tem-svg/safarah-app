@@ -26,8 +26,6 @@ jobs:
       - name: Download Arabic PDF Fonts & Set Arabic App Name
         run: |
           mkdir -p assets/fonts
-          curl -L "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf" -o assets/fonts/NotoSansArabic-Regular.ttf
-          curl -L "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Bold.ttf" -o assets/fonts/NotoSansArabic-Bold.ttf
 
           if [ ! -d "android" ]; then
             echo "Creating android directory..."

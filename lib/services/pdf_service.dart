@@ -13,6 +13,15 @@ import '../models/user_model.dart';
 import '../models/daily_log_model.dart';
 
 class PdfService {
+  static Future<pw.Font> _loadSafeArabicFont(String assetPath, bool isBold) async {
+    try {
+      final data = await rootBundle.load(assetPath);
+      if (data.lengthInBytes > 1000) {
+        return pw.Font.ttf(data);
+      }
+    } catch (_) {}
+    return isBold ? await _loadSafeArabicFont('assets/fonts/NotoSansArabic-Bold.ttf', true) : await _loadSafeArabicFont('assets/fonts/NotoSansArabic-Regular.ttf', false);
+  }
   static Future<File> generateParentReport({
     required StudentModel student,
     required UserModel teacher,
@@ -24,8 +33,8 @@ class PdfService {
     pw.Font arabicRegular;
     pw.Font arabicBold;
     try {
-      arabicRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'));
-      arabicBold = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Bold.ttf'));
+      arabicRegular = await _loadSafeArabicFont('assets/fonts/NotoSansArabic-Regular.ttf', false);
+      arabicBold = await _loadSafeArabicFont('assets/fonts/NotoSansArabic-Bold.ttf', true);
     } catch (_) {
       arabicRegular = pw.Font.helvetica();
       arabicBold = pw.Font.helveticaBold();
@@ -118,8 +127,8 @@ class PdfService {
     pw.Font regular;
     pw.Font bold;
     try {
-      regular = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'));
-      bold = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSansArabic-Bold.ttf'));
+      regular = await _loadSafeArabicFont('assets/fonts/NotoSansArabic-Regular.ttf', false);
+      bold = await _loadSafeArabicFont('assets/fonts/NotoSansArabic-Bold.ttf', true);
     } catch (_) {
       regular = pw.Font.helvetica();
       bold = pw.Font.helveticaBold();
