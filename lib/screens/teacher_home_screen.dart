@@ -245,10 +245,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
+                        backgroundColor: synced ? const Color(0xFF198754) : const Color(0xFFC0392B),
+                        duration: const Duration(seconds: 4),
                         content: Text(
                           synced
-                              ? 'تمت المزامنة السحابية والنسخ الاحتياطي بنجاح'
-                              : 'تم الحفظ محلياً (سيتم الرفع تلقائياً عند توفر الإنترنت)',
+                              ? 'تمت المزامنة السحابية بنجاح ☁✔'
+                              : 'فشل الرفع: ${SyncService.instance.lastSyncError}',
                         ),
                       ),
                     );

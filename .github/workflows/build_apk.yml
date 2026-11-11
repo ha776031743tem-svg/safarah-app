@@ -23,22 +23,23 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Download Arabic PDF Fonts & Set Arabic App Name
+      - name: Prepare Android Manifest with Full Internet Permissions
         run: |
-          mkdir -p assets/fonts
-
-                    if [ ! -d "android" ]; then
+          if [ ! -d "android" ]; then
             echo "Creating android directory..."
             flutter create . --platforms=android
           fi
+
+          # تعريب اسم التطبيق
           sed -i 's/android:label="[^"]*"/android:label="سَفَرَة"/g' android/app/src/main/AndroidManifest.xml
-          # إضافة صلاحيات الإنترنت ومنع حظر الاتصالات الشبكية
+
+          # حقن صلاحيات الإنترنت المطلوبة لنسخة Release
           if ! grep -q "android.permission.INTERNET" android/app/src/main/AndroidManifest.xml; then
-            sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n    <application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
-          else
-            sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
+            sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"\/>' android/app/src/main/AndroidManifest.xml
           fi
-          sed -i 's/android:label="[^"]*"/android:label="سَفَرَة"/g' android/app/src/main/AndroidManifest.xml
+
+          # السماح بالاتصال المباشر وتفادي حظر الشبكات
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
 
           yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
 
