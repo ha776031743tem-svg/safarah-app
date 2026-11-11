@@ -22,22 +22,21 @@ class RoleSelectionScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // الشعار الذهبي المزخرف
                   Container(
                     width: 108,
                     height: 108,
                     decoration: BoxDecoration(
                       gradient: const RadialGradient(
                         colors: [
-                          Color(0xFF146C43),
-                          Color(0xFF042F1D),
+                          Color(0xFF1E3A5F),
+                          Color(0xFF0A1118),
                         ],
                       ),
                       shape: BoxShape.circle,
                       border: Border.all(color: AppConstants.goldAccent, width: 2.8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.4),
+                          color: Colors.black.withOpacity(0.45),
                           blurRadius: 18,
                           offset: const Offset(0, 8),
                         ),
@@ -63,7 +62,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.22),
+                      color: Colors.black.withOpacity(0.25),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppConstants.goldAccent.withOpacity(0.45)),
                     ),
@@ -105,17 +104,16 @@ class RoleSelectionScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF042F1D).withOpacity(0.7),
+                      color: const Color(0xFF0A1118).withOpacity(0.75),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(color: AppConstants.goldAccent.withOpacity(0.6)),
                     ),
                     child: const Text(
-                      'by: Hatem_Ali',
+                      'إعداد وتطوير: حاتم علي',
                       style: TextStyle(
                         fontSize: 13.5,
                         color: AppConstants.goldAccent,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.3,
                       ),
                     ),
                   ),
@@ -141,8 +139,8 @@ class RoleSelectionScreen extends StatelessWidget {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [
-            Color(0xFF0D5C3A),
-            Color(0xFF073B24),
+            Color(0xFF1A2F4B),
+            Color(0xFF101C2E),
           ],
         ),
         borderRadius: BorderRadius.circular(18),

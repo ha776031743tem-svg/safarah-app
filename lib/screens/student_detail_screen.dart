@@ -70,6 +70,34 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     super.dispose();
   }
 
+  /// تحديث صفحات الحفظ تلقائياً عند تغيير رقم الآية (من آية / إلى آية)
+  void _syncMemPagesFromAyahs() {
+    final s = QuranMetadata.getByNumber(_memSurahNum);
+    final fromAyah = int.tryParse(_memFromAyahCtrl.text.trim()) ?? 1;
+    final toAyah = int.tryParse(_memToAyahCtrl.text.trim()) ?? s.ayahCount;
+    final pages = QuranMetadata.getPageRangeForAyahs(
+      surahNumber: _memSurahNum,
+      fromAyah: fromAyah,
+      toAyah: toAyah,
+    );
+    _memFromPageCtrl.text = pages['fromPage'].toString();
+    _memToPageCtrl.text = pages['toPage'].toString();
+  }
+
+  /// تحديث صفحات المراجعة تلقائياً عند تغيير رقم الآية (من آية / إلى آية)
+  void _syncRevPagesFromAyahs() {
+    final s = QuranMetadata.getByNumber(_revSurahNum);
+    final fromAyah = int.tryParse(_revFromAyahCtrl.text.trim()) ?? 1;
+    final toAyah = int.tryParse(_revToAyahCtrl.text.trim()) ?? s.ayahCount;
+    final pages = QuranMetadata.getPageRangeForAyahs(
+      surahNumber: _revSurahNum,
+      fromAyah: fromAyah,
+      toAyah: toAyah,
+    );
+    _revFromPageCtrl.text = pages['fromPage'].toString();
+    _revToPageCtrl.text = pages['toPage'].toString();
+  }
+
   Future<void> _initializeSmartFieldsAndLoadHistory() async {
     setState(() => _isLoading = true);
     final db = DatabaseHelper.instance;
@@ -85,16 +113,30 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     if (todayExistingLog != null &&
         todayExistingLog.status == AppConstants.statusRecited) {
       _memSurahNum = todayExistingLog.memSurahNumber ?? _student.lastSurahNumber;
-      _memFromAyahCtrl.text = (todayExistingLog.memFromAyah ?? 1).toString();
-      _memToAyahCtrl.text = (todayExistingLog.memToAyah ?? 10).toString();
-      _memFromPageCtrl.text = (todayExistingLog.memFromPage ?? 1).toString();
-      _memToPageCtrl.text = (todayExistingLog.memToPage ?? 1).toString();
+      final memFromA = todayExistingLog.memFromAyah ?? 1;
+      final memToA = todayExistingLog.memToAyah ?? 10;
+      _memFromAyahCtrl.text = memFromA.toString();
+      _memToAyahCtrl.text = memToA.toString();
+      final memPages = QuranMetadata.getPageRangeForAyahs(
+        surahNumber: _memSurahNum,
+        fromAyah: memFromA,
+        toAyah: memToA,
+      );
+      _memFromPageCtrl.text = (todayExistingLog.memFromPage ?? memPages['fromPage']!).toString();
+      _memToPageCtrl.text = (todayExistingLog.memToPage ?? memPages['toPage']!).toString();
 
       _revSurahNum = todayExistingLog.revSurahNumber ?? _student.lastSurahNumber;
-      _revFromAyahCtrl.text = (todayExistingLog.revFromAyah ?? 1).toString();
-      _revToAyahCtrl.text = (todayExistingLog.revToAyah ?? 20).toString();
-      _revFromPageCtrl.text = (todayExistingLog.revFromPage ?? 1).toString();
-      _revToPageCtrl.text = (todayExistingLog.revToPage ?? 2).toString();
+      final revFromA = todayExistingLog.revFromAyah ?? 1;
+      final revToA = todayExistingLog.revToAyah ?? 20;
+      _revFromAyahCtrl.text = revFromA.toString();
+      _revToAyahCtrl.text = revToA.toString();
+      final revPages = QuranMetadata.getPageRangeForAyahs(
+        surahNumber: _revSurahNum,
+        fromAyah: revFromA,
+        toAyah: revToA,
+      );
+      _revFromPageCtrl.text = (todayExistingLog.revFromPage ?? revPages['fromPage']!).toString();
+      _revToPageCtrl.text = (todayExistingLog.revToPage ?? revPages['toPage']!).toString();
       _notesCtrl.text = todayExistingLog.notes;
     } else {
       final nextPos = QuranMetadata.getNextPosition(
@@ -113,8 +155,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       _revSurahNum = revSurah.number;
       _revFromAyahCtrl.text = '1';
       _revToAyahCtrl.text = _student.lastAyah.toString();
-      _revFromPageCtrl.text = revSurah.startPage.toString();
-      _revToPageCtrl.text = _student.lastPage.toString();
+      final revPages = QuranMetadata.getPageRangeForAyahs(
+        surahNumber: revSurah.number,
+        fromAyah: 1,
+        toAyah: _student.lastAyah,
+      );
+      _revFromPageCtrl.text = revPages['fromPage'].toString();
+      _revToPageCtrl.text = revPages['toPage'].toString();
     }
 
     if (mounted) {
@@ -151,7 +198,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: const Color(0xFF063521),
+            backgroundColor: AppConstants.surfaceEmerald,
             content: Text(
               'تم تسجيل حالة الطالب اليوم: ${AppConstants.statusLabelAr(status)}',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -174,15 +221,25 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       final memSurah = QuranMetadata.getByNumber(_memSurahNum);
       final revSurah = QuranMetadata.getByNumber(_revSurahNum);
 
-      final memFromAyah = int.tryParse(_memFromAyahCtrl.text.trim()) ?? 1;
-      final memToAyah = int.tryParse(_memToAyahCtrl.text.trim()) ?? memSurah.ayahCount;
-      final memFromPage = int.tryParse(_memFromPageCtrl.text.trim()) ?? memSurah.startPage;
-      final memToPage = int.tryParse(_memToPageCtrl.text.trim()) ?? memSurah.endPage;
+      final memFromAyah = (int.tryParse(_memFromAyahCtrl.text.trim()) ?? 1).clamp(1, memSurah.ayahCount);
+      final memToAyah = (int.tryParse(_memToAyahCtrl.text.trim()) ?? memSurah.ayahCount).clamp(memFromAyah, memSurah.ayahCount);
+      final exactMemPages = QuranMetadata.getPageRangeForAyahs(
+        surahNumber: memSurah.number,
+        fromAyah: memFromAyah,
+        toAyah: memToAyah,
+      );
+      final memFromPage = int.tryParse(_memFromPageCtrl.text.trim()) ?? exactMemPages['fromPage']!;
+      final memToPage = int.tryParse(_memToPageCtrl.text.trim()) ?? exactMemPages['toPage']!;
 
-      final revFromAyah = int.tryParse(_revFromAyahCtrl.text.trim()) ?? 1;
-      final revToAyah = int.tryParse(_revToAyahCtrl.text.trim()) ?? revSurah.ayahCount;
-      final revFromPage = int.tryParse(_revFromPageCtrl.text.trim()) ?? revSurah.startPage;
-      final revToPage = int.tryParse(_revToPageCtrl.text.trim()) ?? revSurah.endPage;
+      final revFromAyah = (int.tryParse(_revFromAyahCtrl.text.trim()) ?? 1).clamp(1, revSurah.ayahCount);
+      final revToAyah = (int.tryParse(_revToAyahCtrl.text.trim()) ?? revSurah.ayahCount).clamp(revFromAyah, revSurah.ayahCount);
+      final exactRevPages = QuranMetadata.getPageRangeForAyahs(
+        surahNumber: revSurah.number,
+        fromAyah: revFromAyah,
+        toAyah: revToAyah,
+      );
+      final revFromPage = int.tryParse(_revFromPageCtrl.text.trim()) ?? exactRevPages['fromPage']!;
+      final revToPage = int.tryParse(_revToPageCtrl.text.trim()) ?? exactRevPages['toPage']!;
 
       final log = DailyLogModel(
         id: existingToday?.id ?? 'log_${_student.id}_$_todayDate',
@@ -217,7 +274,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           const SnackBar(
             backgroundColor: AppConstants.secondaryColor,
             content: Text(
-              'تم حفظ التسميع وتحديث آخر موضع للطالب بنجاح',
+              'تم حفظ التسميع وتحديث آخر موضع وصفحة للطالب بنجاح',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
@@ -241,7 +298,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF073B24),
+      backgroundColor: AppConstants.surfaceEmerald,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         side: BorderSide(color: AppConstants.goldAccent, width: 1.2),
@@ -473,10 +530,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // زر بارز لتصدير تقرير PDF لولي الأمر
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xFF063521),
+                        backgroundColor: AppConstants.surfaceEmerald,
                         foregroundColor: AppConstants.goldAccent,
                         side: const BorderSide(color: AppConstants.goldAccent, width: 1.4),
                         padding: const EdgeInsets.symmetric(vertical: 13),
@@ -487,7 +543,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // 1. أزرار الحالة السريعة في الأعلى: (حضر ولم يسمع | غائب | مستأذن) بجانب بعضها
+                    // 1. أزرار الحالة السريعة في الأعلى: (حضر ولم يسمع | غائب | مستأذن)
                     Card(
                       elevation: 3,
                       shape: RoundedRectangleBorder(
@@ -581,16 +637,17 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // 2. بطاقة تسجيل الحفظ (Memorization Card)
+                    // 2. بطاقة تسجيل الحفظ (Memorization Card) مع ربط تلقائي بين الآيات والصفحات
                     _buildQuranInputCard(
-                      title: 'بطاقة تسجيل الحفظ الجديد (تعبئة ذكية تلقائية)',
+                      title: 'بطاقة تسجيل الحفظ الجديد (ربط تلقائي بالصفحات)',
                       icon: Icons.menu_book_rounded,
-                      headerColor: const Color(0xFF063521),
+                      headerColor: AppConstants.primaryColor,
                       selectedSurahNum: _memSurahNum,
                       fromAyahCtrl: _memFromAyahCtrl,
                       toAyahCtrl: _memToAyahCtrl,
                       fromPageCtrl: _memFromPageCtrl,
                       toPageCtrl: _memToPageCtrl,
+                      onAyahChanged: _syncMemPagesFromAyahs,
                       onSurahChanged: (val) {
                         if (val != null) {
                           final s = QuranMetadata.getByNumber(val);
@@ -606,16 +663,17 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // 3. بطاقة تسجيل المراجعة (Revision Card)
+                    // 3. بطاقة تسجيل المراجعة (Revision Card) مع ربط تلقائي بين الآيات والصفحات
                     _buildQuranInputCard(
-                      title: 'بطاقة تسجيل المراجعة اليومية',
+                      title: 'بطاقة تسجيل المراجعة اليومية (ربط تلقائي بالصفحات)',
                       icon: Icons.autorenew_rounded,
-                      headerColor: const Color(0xFF0E5A38),
+                      headerColor: AppConstants.secondaryColor,
                       selectedSurahNum: _revSurahNum,
                       fromAyahCtrl: _revFromAyahCtrl,
                       toAyahCtrl: _revToAyahCtrl,
                       fromPageCtrl: _revFromPageCtrl,
                       toPageCtrl: _revToPageCtrl,
+                      onAyahChanged: _syncRevPagesFromAyahs,
                       onSurahChanged: (val) {
                         if (val != null) {
                           final s = QuranMetadata.getByNumber(val);
@@ -631,7 +689,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // ملاحظة يومية اختيارية
                     TextField(
                       controller: _notesCtrl,
                       style: const TextStyle(color: Colors.white),
@@ -642,7 +699,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // زر حفظ التسميع اليومي
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppConstants.goldAccent,
@@ -678,7 +734,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF073B24),
+                          color: AppConstants.surfaceEmerald,
                           border: Border.all(color: AppConstants.goldAccent.withOpacity(0.5)),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -752,14 +808,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 8),
-                                          Icon(
-                                            item.isSynced == 1
-                                                ? Icons.cloud_done_rounded
-                                                : Icons.cloud_upload_outlined,
-                                            size: 17,
-                                            color: item.isSynced == 1
-                                                ? const Color(0xFF2ECC71)
-                                                : AppConstants.goldAccent,
+                                          Tooltip(
+                                            message: item.isSynced == 1
+                                                ? 'مرفوع ومحفوظ في قاعدة البيانات السحابية'
+                                                : 'محفوظ محلياً بانتظار الإنترنت',
+                                            child: Icon(
+                                              item.isSynced == 1
+                                                  ? Icons.cloud_done_rounded
+                                                  : Icons.cloud_upload_outlined,
+                                              size: 18,
+                                              color: item.isSynced == 1
+                                                  ? const Color(0xFF2ECC71)
+                                                  : AppConstants.goldAccent,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -810,6 +871,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     required TextEditingController toAyahCtrl,
     required TextEditingController fromPageCtrl,
     required TextEditingController toPageCtrl,
+    required VoidCallback onAyahChanged,
     required ValueChanged<int?> onSurahChanged,
   }) {
     final surahInfo = QuranMetadata.getByNumber(selectedSurahNum);
@@ -846,7 +908,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 13.5,
+                            fontSize: 13,
                           ),
                         ),
                       ),
@@ -899,6 +961,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(labelText: 'من آية'),
+                        onChanged: (_) => onAyahChanged(),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -909,6 +972,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(labelText: 'إلى آية'),
+                        onChanged: (_) => onAyahChanged(),
                       ),
                     ),
                   ],
@@ -922,7 +986,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          labelText: 'من صفحة (المصحف)',
+                          labelText: 'من صفحة (تُحسب تلقائياً)',
                           prefixIcon: Icon(Icons.find_in_page_outlined, size: 18),
                         ),
                       ),
@@ -934,7 +998,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          labelText: 'إلى صفحة (المصحف)',
+                          labelText: 'إلى صفحة (تُحسب تلقائياً)',
                           prefixIcon: Icon(Icons.find_in_page_outlined, size: 18),
                         ),
                       ),

@@ -70,6 +70,7 @@ class SafarahApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
+        fontFamily: 'SafarahArabic',
         scaffoldBackgroundColor: Colors.transparent,
         canvasColor: AppConstants.surfaceEmerald,
         colorScheme: const ColorScheme.dark(
@@ -81,12 +82,13 @@ class SafarahApp extends StatelessWidget {
           onSurface: Colors.white,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF063521),
+          backgroundColor: Color(0xFF0E1B2B),
           foregroundColor: Colors.white,
           centerTitle: true,
           elevation: 2,
           iconTheme: IconThemeData(color: AppConstants.goldAccent),
           titleTextStyle: TextStyle(
+            fontFamily: 'SafarahArabic',
             fontSize: 19,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -102,8 +104,9 @@ class SafarahApp extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             textStyle: const TextStyle(
+              fontFamily: 'SafarahArabic',
               fontWeight: FontWeight.bold,
-              fontSize: 15.5,
+              fontSize: 15,
             ),
           ),
         ),
@@ -116,13 +119,14 @@ class SafarahApp extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             textStyle: const TextStyle(
+              fontFamily: 'SafarahArabic',
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
           ),
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFF0A462C),
+          color: AppConstants.cardBackground,
           elevation: 5,
           shadowColor: Colors.black54,
           shape: RoundedRectangleBorder(
@@ -131,23 +135,32 @@ class SafarahApp extends StatelessWidget {
           ),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: const Color(0xFF073B24),
+          backgroundColor: AppConstants.surfaceEmerald,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
             side: const BorderSide(color: AppConstants.goldAccent, width: 1.2),
           ),
           titleTextStyle: const TextStyle(
+            fontFamily: 'SafarahArabic',
             color: AppConstants.goldAccent,
             fontSize: 19,
             fontWeight: FontWeight.bold,
           ),
-          contentTextStyle: const TextStyle(color: Colors.white),
+          contentTextStyle: const TextStyle(
+            fontFamily: 'SafarahArabic',
+            color: Colors.white,
+          ),
         ),
         chipTheme: ChipThemeData(
-          backgroundColor: const Color(0xFF063521),
+          backgroundColor: const Color(0xFF0E1B2B),
           selectedColor: AppConstants.goldAccent,
-          labelStyle: const TextStyle(color: Colors.white, fontSize: 12.5),
+          labelStyle: const TextStyle(
+            fontFamily: 'SafarahArabic',
+            color: Colors.white,
+            fontSize: 12.5,
+          ),
           secondaryLabelStyle: const TextStyle(
+            fontFamily: 'SafarahArabic',
             color: AppConstants.darkEmerald,
             fontWeight: FontWeight.bold,
           ),
@@ -160,7 +173,7 @@ class SafarahApp extends StatelessWidget {
           prefixIconColor: AppConstants.goldAccent,
           suffixIconColor: AppConstants.goldAccent,
           filled: true,
-          fillColor: const Color(0xFF052E1C),
+          fillColor: const Color(0xFF0C1523),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

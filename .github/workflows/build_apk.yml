@@ -23,19 +23,20 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Prepare Android and Set CompileSdk 36
+      - name: Download Arabic PDF Fonts & Set Arabic App Name
         run: |
-          # 1. إنشاء مجلد أندرويد إن لم يكن موجوداً
+          mkdir -p assets/fonts
+          curl -L "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf" -o assets/fonts/NotoSansArabic-Regular.ttf
+          curl -L "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Bold.ttf" -o assets/fonts/NotoSansArabic-Bold.ttf
+
           if [ ! -d "android" ]; then
             echo "Creating android directory..."
             flutter create . --platforms=android
-          sed -i 's/android:label="[^"]*"/android:label="سَفَرَة"/g' android/app/src/main/AndroidManifest.xml
           fi
+          sed -i 's/android:label="[^"]*"/android:label="سَفَرَة"/g' android/app/src/main/AndroidManifest.xml
 
-          # 2. تثبيت Android Platform 36 لدعم BAKLAVA
           yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
 
-          # 3. ضبط رابط Gradle Wrapper على 9.3.1-bin
           cat << 'EOF' > android/gradle/wrapper/gradle-wrapper.properties
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
@@ -44,7 +45,6 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
 
-          # 4. إجبار كافة الحزم وتطبيقك على compileSdk 36 لدعم sqflite و printing
           mkdir -p ~/.gradle
           cat << 'EOF' > ~/.gradle/init.gradle
           allprojects {
@@ -52,9 +52,6 @@ jobs:
                   if (project.hasProperty('android')) {
                       project.android {
                           compileSdkVersion 36
-                          if (namespace == null && project != rootProject) {
-                              // bypass namespace issues if any
-                          }
                       }
                   }
               }
@@ -64,7 +61,6 @@ jobs:
           }
           EOF
 
-          # 5. رفع مهلة الاتصال والذاكرة
           echo "systemProp.org.gradle.internal.http.connectionTimeout=300000" >> ~/.gradle/gradle.properties
           echo "systemProp.org.gradle.internal.http.socketTimeout=300000" >> ~/.gradle/gradle.properties
           echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m" >> ~/.gradle/gradle.properties
