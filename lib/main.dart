@@ -11,7 +11,18 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/teacher_home_screen.dart';
 
 Future<void> _initCloudInBackground() async {
-  // تشغيل السحابة والمزامنة في الخلفية بدون حجب فتح التطبيق
+  if (AppConstants.isSupabaseConfigured) {
+    try {
+      await Supabase.initialize(
+        url: AppConstants.supabaseUrl,
+        anonKey: AppConstants.supabaseAnonKey,
+      ).timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('Offline/Cloud init skipped: $e');
+    }
+  }
+  try {
+    await SyncService.instance.initialize();
   } catch (e) {
     debugPrint('Background sync init skipped: $e');
   }
@@ -20,7 +31,7 @@ Future<void> _initCloudInBackground() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // تشغيل السحابة والمزامنة في الخلفية بدون حجب فتح التطبيق
+  await DatabaseHelper.instance.database;
 
   final prefs = await SharedPreferences.getInstance();
   final savedUserId = prefs.getString('logged_in_user_id');
@@ -30,6 +41,8 @@ void main() async {
   }
 
   runApp(SafarahApp(initialUser: initialUser));
+
+  // تشغيل السحابة والمزامنة في الخلفية بدون تأخير فتح التطبيق أوفلاين
   _initCloudInBackground();
 }
 
@@ -41,7 +54,7 @@ class SafarahApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'سَفَرَة - حلقات التحفيظ',
+      title: 'سفرة - حلقات التحفيظ',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar', 'SA'),
       supportedLocales: const [
@@ -71,113 +84,59 @@ class SafarahApp extends StatelessWidget {
         canvasColor: AppConstants.surfaceEmerald,
         colorScheme: const ColorScheme.dark(
           primary: AppConstants.goldAccent,
-          onPrimary: AppConstants.darkEmerald,
-          secondary: AppConstants.secondaryColor,
-          onSecondary: Colors.white,
-          surface: AppConstants.cardBackground,
-          onSurface: Colors.white,
+          secondary: AppConstants.lightGold,
+          surface: AppConstants.surfaceEmerald,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0E1B2B),
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           centerTitle: true,
-          elevation: 2,
-          iconTheme: IconThemeData(color: AppConstants.goldAccent),
           titleTextStyle: TextStyle(
             fontFamily: 'SafarahArabic',
-            fontSize: 19,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.white,
+          ),
+          iconTheme: IconThemeData(color: AppConstants.goldAccent),
+        ),
+        cardTheme: CardThemeData(
+          color: AppConstants.cardBackground.withOpacity(0.92),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: AppConstants.goldAccent.withOpacity(0.35),
+              width: 1,
+            ),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppConstants.goldAccent,
             foregroundColor: AppConstants.darkEmerald,
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-            elevation: 3,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            textStyle: const TextStyle(
+              fontFamily: 'SafarahArabic',
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            textStyle: const TextStyle(
-              fontFamily: 'SafarahArabic',
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
           ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppConstants.goldAccent,
-            side: const BorderSide(color: AppConstants.goldAccent, width: 1.2),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: const TextStyle(
-              fontFamily: 'SafarahArabic',
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          color: AppConstants.cardBackground,
-          elevation: 5,
-          shadowColor: Colors.black54,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppConstants.goldAccent, width: 0.9),
-          ),
-        ),
-        dialogTheme: DialogThemeData(
-          backgroundColor: AppConstants.surfaceEmerald,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: AppConstants.goldAccent, width: 1.2),
-          ),
-          titleTextStyle: const TextStyle(
-            fontFamily: 'SafarahArabic',
-            color: AppConstants.goldAccent,
-            fontSize: 19,
-            fontWeight: FontWeight.bold,
-          ),
-          contentTextStyle: const TextStyle(
-            fontFamily: 'SafarahArabic',
-            color: Colors.white,
-          ),
-        ),
-        chipTheme: ChipThemeData(
-          backgroundColor: const Color(0xFF0E1B2B),
-          selectedColor: AppConstants.goldAccent,
-          labelStyle: const TextStyle(
-            fontFamily: 'SafarahArabic',
-            color: Colors.white,
-            fontSize: 12.5,
-          ),
-          secondaryLabelStyle: const TextStyle(
-            fontFamily: 'SafarahArabic',
-            color: AppConstants.darkEmerald,
-            fontWeight: FontWeight.bold,
-          ),
-          side: const BorderSide(color: AppConstants.goldAccent, width: 0.8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         inputDecorationTheme: InputDecorationTheme(
-          labelStyle: const TextStyle(color: AppConstants.lightGold, fontSize: 13.5),
-          hintStyle: const TextStyle(color: Colors.white54),
-          prefixIconColor: AppConstants.goldAccent,
-          suffixIconColor: AppConstants.goldAccent,
           filled: true,
-          fillColor: const Color(0xFF0C1523),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          fillColor: const Color(0xFF0D1726),
+          labelStyle: const TextStyle(color: Colors.white70),
+          prefixIconColor: AppConstants.goldAccent,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppConstants.goldAccent, width: 1),
+            borderSide: BorderSide(color: AppConstants.goldAccent.withOpacity(0.4)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppConstants.goldAccent.withOpacity(0.55), width: 1),
+            borderSide: BorderSide(color: AppConstants.goldAccent.withOpacity(0.4)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -185,17 +144,11 @@ class SafarahApp extends StatelessWidget {
           ),
         ),
       ),
-      home: _resolveHomeScreen(),
+      home: initialUser == null
+          ? const RoleSelectionScreen()
+          : (initialUser!.role == AppConstants.roleAdmin
+              ? AdminDashboardScreen(adminUser: initialUser!)
+              : TeacherHomeScreen(teacherUser: initialUser!)),
     );
-  }
-
-  Widget _resolveHomeScreen() {
-    if (initialUser == null) {
-      return const RoleSelectionScreen();
-    }
-    if (initialUser!.role == AppConstants.roleAdmin) {
-      return AdminDashboardScreen(adminUser: initialUser!);
-    }
-    return TeacherHomeScreen(teacherUser: initialUser!);
   }
 }
