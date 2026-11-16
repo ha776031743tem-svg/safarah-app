@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,22 +10,17 @@ import 'screens/role_selection_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/teacher_home_screen.dart';
 
+Future<void> _initCloudInBackground() async {
+  // تشغيل السحابة والمزامنة في الخلفية بدون حجب فتح التطبيق
+  } catch (e) {
+    debugPrint('Background sync init skipped: $e');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (AppConstants.isSupabaseConfigured) {
-    try {
-      await Supabase.initialize(
-        url: AppConstants.supabaseUrl,
-        anonKey: AppConstants.supabaseAnonKey,
-      );
-    } catch (e) {
-      debugPrint('Supabase initialization warning: $e');
-    }
-  }
-
-  await DatabaseHelper.instance.database;
-  await SyncService.instance.initialize();
+  // تشغيل السحابة والمزامنة في الخلفية بدون حجب فتح التطبيق
 
   final prefs = await SharedPreferences.getInstance();
   final savedUserId = prefs.getString('logged_in_user_id');
@@ -35,6 +30,7 @@ void main() async {
   }
 
   runApp(SafarahApp(initialUser: initialUser));
+  _initCloudInBackground();
 }
 
 class SafarahApp extends StatelessWidget {

@@ -43,7 +43,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       todayMap[st.id] = await db.getStudentLogByDate(st.id, _todayDate);
     }
 
-    await SyncService.instance.refreshPendingCount();
+    SyncService.instance.refreshPendingCount();
 
     if (mounted) {
       setState(() {
